@@ -90,31 +90,8 @@ def softmax_mask(val, mask):
     # 1 -> val
     return -INF * (1 - tf.cast(mask, tf.float32)) + val
 
-
-def pointer(inputs, state, hidden, mask, scope="pointer"):
-    with tf.variable_scope(scope):
-        u = tf.concat([tf.tile(tf.expand_dims(state, axis=1), [
-            1, tf.shape(inputs)[1], 1]), inputs], axis=2)
-        s0 = tf.nn.tanh(dense(u, hidden, use_bias=False, scope="s0"))
-        s = dense(s0, 1, use_bias=False, scope="s")
-        s1 = softmax_mask(tf.squeeze(s, [2]), mask)
-        a = tf.expand_dims(tf.nn.softmax(s1), axis=2)
-        res = tf.reduce_sum(a * inputs, axis=1)
-        return res, s1
-
-
-def summ(memory, hidden, mask, keep_prob=1.0, is_train=None, scope="summ"):
-    with tf.variable_scope(scope):
-        d_memory = dropout(memory, keep_prob=keep_prob, is_train=is_train)
-        s0 = tf.nn.tanh(dense(d_memory, hidden, scope="s0"))
-        s = dense(s0, 1, use_bias=False, scope="s")
-        s1 = softmax_mask(tf.squeeze(s, [2]), mask)
-        a = tf.expand_dims(tf.nn.softmax(s1), axis=2)
-        res = tf.reduce_sum(a * d_memory, axis=1)
-        return res
-
 def softmax2d(logits):
-    sum = tf.reduce_sum(logits, [1, 2])
+    sum = tf.reduce_sum(tf.exp(logits), [1, 2])
     sum = tf.expand_dims(sum, axis=1)
     sum = tf.expand_dims(sum, axis=2)
     ilen = tf.shape(logits)[1]
@@ -131,8 +108,8 @@ def dot_attention(inputs, memory, mask, hidden, keep_prob=1.0, is_train=None, sc
 
         JX = tf.shape(inputs)[1]
         # ilen
-        inputs_ = tf.nn.relu(dense(d_inputs, hidden, scope="inputs"))
-        memory_ = tf.nn.relu(dense(d_memory, hidden, scope="memory"))
+        inputs_ = tf.nn.relu(tf.layers.dense(d_inputs, hidden, name="inputs"))
+        memory_ = tf.nn.relu(tf.layers.dense(d_memory, hidden, name="memory"))
         # [batch, ilen, hidden]
         # [batch, mlen, hidden]
 
@@ -156,7 +133,7 @@ def dot_attention(inputs, memory, mask, hidden, keep_prob=1.0, is_train=None, sc
         # [batch, ilen, inputs_dim + memory_dim]
 
         dim = res.get_shape().as_list()[-1]
-        gate = tf.nn.sigmoid(dense(res, dim, use_bias=False, scope="gate"))
+        gate = tf.nn.sigmoid(tf.layers.dense(res, dim, use_bias=False, name="gate"))
         return res * gate, att_weight
 
 '''
@@ -196,8 +173,8 @@ def dot_attention(inputs, memory, mask, hidden, keep_prob=1.0, is_train=None, sc
         gate = tf.nn.sigmoid(dense(res, dim, use_bias=False, scope="gate"))
         return res * gate, att_weight
 '''
-
-def dense(inputs, hidden, use_bias=True, scope="dense", std=0.01):
+'''
+def dense(inputs, hidden, use_bias=True, scope="dense", std=0.1):
     with tf.variable_scope(scope):
         shape = tf.shape(inputs)                      # shape of inputs: [batch, len, dim]
         dim = inputs.get_shape().as_list()[-1]        # dim of input
@@ -212,6 +189,7 @@ def dense(inputs, hidden, use_bias=True, scope="dense", std=0.01):
             res = tf.nn.bias_add(res, b)
         res = tf.reshape(res, out_shape)
         return res
+'''
 
 '''
 class GRUCell(RNNCell):

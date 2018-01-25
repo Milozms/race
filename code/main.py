@@ -158,10 +158,12 @@ def main(args):
                                                      model_train.question_input: ques_batch,
                                                      model_train.option_input: opt_batch,
                                                      model_train.labels_input: label_batch})
-                for i in range(len(debug_output)):
-                    # print(model_train.debug_output_name[i], debug_output[i])
-                    with open('../npsave/epoch'+str(epoch)+model_train.debug_output_name[i], 'wb') as f:
-                        np.save(f, debug_output[i])
+                # for i in range(len(debug_output)):
+                #     print(model_train.debug_output_name[i], debug_output[i])
+                    # with open('../npsave/epoch'+str(epoch)+'batch'+str(idx)+model_train.debug_output_name[i], 'wb') as f:
+                    #     np.save(f, debug_output[i])
+                # print(np.reshape(debug_output[-2], [-1]))
+                # print(debug_output[-1])
                 logging.info('batch %d, loss = %f' % (idx, loss))
                 print('\nbatch %d, loss = %f' % (idx, loss))
                 writer.add_summary(summary_str, epoch*len(all_train)+idx)

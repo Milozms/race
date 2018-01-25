@@ -163,37 +163,29 @@ class Model(object):
             # [batch_size, 1, 2*d] -> [batch_size, 2*d]
 
         with tf.variable_scope("predict"):
-            '''
             p_hidden = 2*d
             q_hidden = 2*d
-            W_predict = tf.get_variable("W_predict", [q_hidden, p_hidden], initializer=tf.truncated_normal_initializer(stddev=0.01))
-            self.debug_output.append(W_predict)
-            self.debug_output_name.append('W_predict')
+            W_predict = tf.get_variable("W_predict", [q_hidden, p_hidden], initializer=tf.truncated_normal_initializer(stddev=0.1), dtype=tf.float64)
             question_representation = tf.reshape(question_representation, [-1, q_hidden])
             # [batch_size, q_hidden]
+            question_representation = tf.cast(question_representation, dtype=tf.float64)
             score = tf.matmul(question_representation, W_predict)
             # [batch_size, p_hidden]
             score = tf.reshape(score, [-1, 1, p_hidden])
             # [batch_size, 1, p_hidden]
-            self.debug_output.append(score)
-            self.debug_output_name.append('q*W')
             passage_representation = tf.transpose(passage_representation, [0, 2, 1])
-            self.debug_output.append(passage_representation)
-            self.debug_output_name.append('p')
+            passage_representation = tf.cast(passage_representation, dtype=tf.float64)
             score = tf.matmul(score, passage_representation)
             # [batch_size, 1, 1]
-            self.debug_output.append(score)
-            self.debug_output_name.append('q*W*p')
-            score = score[:, 0, 0]
-            '''
-            score = tf.matmul(passage_representation, tf.transpose(question_representation, [0, 2, 1]))
-            score = score[:, 0, 0]
-            self.score = tf.sigmoid(score)
+            score = tf.reshape(score, [-1, 4])
+            score = tf.nn.softmax(score, dim=1)
+            score = tf.cast(score, dtype=tf.float32)
+            self.score = tf.reshape(score, [-1])
             tf.summary.histogram('scores', self.score)
             self.loss = tf.losses.mean_squared_error(self.score, self.labels)
             tf.summary.scalar('loss_function', self.loss)
-        self.debug_output_name = ['passage_representation', 'question_representation', 'score']
-        self.debug_output = [passage_representation, question_representation, score]
+        self.debug_output_name = ['att_weight_', 'score']
+        self.debug_output = [att_weight_, self.score]
 
 
     def get_score(self):
