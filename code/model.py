@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import numpy as np
 from func import stacked_gru, dot_attention, dropout
 from tqdm import tqdm
 
@@ -58,7 +58,7 @@ class Model(object):
             # self.train_op = self.opt.apply_gradients(zip(capped_grads, variables), global_step=self.global_step)
         self.merged_summary_op = tf.summary.merge_all()
 
-    def define_model(self):
+    def define_model_naive(self):
         config = self.config
         N, PL, QL, d = config.batch_size * 4, self.article_maxlen, self.question_maxlen, config.hidden_size
 
@@ -73,10 +73,6 @@ class Model(object):
             tf.get_variable_scope().reuse_variables()
             q, q_state = stacked_gru(q_emb, d, batch=N, num_layers=3, seq_len=self.question_len, keep_prob=self.keep_prob,
                                is_train=self.is_train)
-            # c[0], c[1] size: [batch_size, c_len, d]
-            # q[0], q[1] size: [batch_size, q_len, d]
-            c = tf.concat([c[0], c[1]], axis=2)
-            q = tf.concat([q[0], q[1]], axis=2)
             # c size: [batch, c_len, 2*d]
             # q size: [batch, q_len, 2*d]
             q = tf.reduce_sum(q, axis=1)
@@ -121,37 +117,38 @@ class Model(object):
         self.debug_output = [c, q, W_attention, alpha, passage_vec, W_predict, score]
 
 
-    def define_model_rnet(self):
+    def define_model(self):
         config = self.config
         N, PL, QL, d = config.batch_size*4, self.article_maxlen, self.question_maxlen, config.hidden_size
-
+        self.debug_output_name = []
+        self.debug_output = []
         with tf.variable_scope("emb"):
             with tf.name_scope("word"):
                 c_emb = tf.nn.embedding_lookup(self.word_mat, self.article)
                 q_emb = tf.nn.embedding_lookup(self.word_mat, self.question)
 
         with tf.variable_scope("encoding"):
-            c, c_res_mean, _ = stacked_gru(c_emb, d, batch=N, num_layers=3, seq_len=self.article_len, keep_prob=self.keep_prob,
+            c, _ = stacked_gru(c_emb, d, batch=N, num_layers=2, seq_len=self.article_len, keep_prob=self.keep_prob,
                                is_train=self.is_train)
             tf.get_variable_scope().reuse_variables()
-            q, q_res_mean, _ = stacked_gru(q_emb, d, batch=N, num_layers=3, seq_len=self.question_len, keep_prob=self.keep_prob,
+            q, _ = stacked_gru(q_emb, d, batch=N, num_layers=2, seq_len=self.question_len, keep_prob=self.keep_prob,
                                is_train=self.is_train)
-            # c size: [batch_size, c_len, 2*3*d]
-            # q size: [batch_size, q_len, 2*3*d]
+            # c size: [batch_size, c_len, 2*d]
+            # q size: [batch_size, q_len, 2*d]
 
         with tf.variable_scope("attention_q2d"):
             qc_att, att_weight_ = dot_attention(c, q, mask=self.question_mask, hidden=d,
                                    keep_prob=self.keep_prob, is_train=self.is_train)
             # att_weight_ : [batch_size, c_len, q_len]
-            # qc_att: [batch_size, c_len, 2*2*3*d]
+            # qc_att: [batch_size, c_len, 2*2*d]
 
-            att, c_res_mean, _ = stacked_gru(qc_att, d, num_layers=1, seq_len=self.article_len,
+            att, _ = stacked_gru(qc_att, d, num_layers=1, seq_len=self.article_len, batch=N,
                                  keep_prob=self.keep_prob, is_train=self.is_train)
 
         with tf.variable_scope("match"):
             self_att, self_att_weight_ = dot_attention(
                 att, att, mask=self.article_mask, hidden=d, keep_prob=self.keep_prob, is_train=self.is_train)
-            match, c_res_mean, _ = stacked_gru(self_att, d, num_layers=1, seq_len=self.article_len,
+            match, _ = stacked_gru(self_att, d, num_layers=1, seq_len=self.article_len, batch=N,
                                    keep_prob=self.keep_prob, is_train=self.is_train)
             # match size: [batch_size, c_len, 2*d]
 
@@ -162,25 +159,41 @@ class Model(object):
             # [batch_size, 1, 2*d] -> [batch_size, 2*d]
             weight_for_each_question_word = tf.expand_dims(tf.reduce_sum(att_weight_, 1), 1)
             # [batch_size, 1, q_len]
-            question_representation = tf.matmul(weight_for_each_question_word, q_res_mean)
+            question_representation = tf.matmul(weight_for_each_question_word, q)
             # [batch_size, 1, 2*d] -> [batch_size, 2*d]
 
         with tf.variable_scope("predict"):
+            '''
             p_hidden = 2*d
             q_hidden = 2*d
             W_predict = tf.get_variable("W_predict", [q_hidden, p_hidden], initializer=tf.truncated_normal_initializer(stddev=0.01))
+            self.debug_output.append(W_predict)
+            self.debug_output_name.append('W_predict')
             question_representation = tf.reshape(question_representation, [-1, q_hidden])
             # [batch_size, q_hidden]
-            question_mult_w = tf.matmul(question_representation, W_predict)
+            score = tf.matmul(question_representation, W_predict)
             # [batch_size, p_hidden]
-            question_mult_w = tf.reshape(question_mult_w, [-1, 1, p_hidden])
+            score = tf.reshape(score, [-1, 1, p_hidden])
             # [batch_size, 1, p_hidden]
-            self.score_ = tf.matmul(question_mult_w, tf.transpose(passage_representation, [0, 2, 1]))
+            self.debug_output.append(score)
+            self.debug_output_name.append('q*W')
+            passage_representation = tf.transpose(passage_representation, [0, 2, 1])
+            self.debug_output.append(passage_representation)
+            self.debug_output_name.append('p')
+            score = tf.matmul(score, passage_representation)
             # [batch_size, 1, 1]
-            self.score = tf.sigmoid(self.score_[:, 0, 0])
+            self.debug_output.append(score)
+            self.debug_output_name.append('q*W*p')
+            score = score[:, 0, 0]
+            '''
+            score = tf.matmul(passage_representation, tf.transpose(question_representation, [0, 2, 1]))
+            score = score[:, 0, 0]
+            self.score = tf.sigmoid(score)
             tf.summary.histogram('scores', self.score)
             self.loss = tf.losses.mean_squared_error(self.score, self.labels)
             tf.summary.scalar('loss_function', self.loss)
+        self.debug_output_name = ['passage_representation', 'question_representation', 'score']
+        self.debug_output = [passage_representation, question_representation, score]
 
 
     def get_score(self):

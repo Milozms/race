@@ -158,8 +158,10 @@ def main(args):
                                                      model_train.question_input: ques_batch,
                                                      model_train.option_input: opt_batch,
                                                      model_train.labels_input: label_batch})
-                # for i in range(len(debug_output)):
-                #     print(model_train.debug_output_name[i], debug_output[i])
+                for i in range(len(debug_output)):
+                    # print(model_train.debug_output_name[i], debug_output[i])
+                    with open('../npsave/epoch'+str(epoch)+model_train.debug_output_name[i], 'wb') as f:
+                        np.save(f, debug_output[i])
                 logging.info('batch %d, loss = %f' % (idx, loss))
                 print('\nbatch %d, loss = %f' % (idx, loss))
                 writer.add_summary(summary_str, epoch*len(all_train)+idx)
@@ -202,7 +204,7 @@ def main(args):
 
 if __name__ == '__main__':
     # os.system('export LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64')
-    os.environ["CUDA_VISIBLE_DEVICES"] = '0'  # 指定第一块GPU可用
+    os.environ["CUDA_VISIBLE_DEVICES"] = ''  # 指定第一块GPU可用
     tfconfig = tf.ConfigProto()
     # tfconfig.gpu_options.per_process_gpu_memory_fraction = 0.4
     tfconfig.gpu_options.allow_growth = True  # 程序按需申请内存

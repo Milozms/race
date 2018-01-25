@@ -3,7 +3,7 @@ from tensorflow.python.ops.rnn_cell_impl import _linear, RNNCell
 
 INF = 1e30
 
-def stacked_gru(inputs, hidden, num_layers, seq_len, batch, keep_prob=1.0, is_train=None, std=0.01, concat_layers=True, scope="StackedGRU"):
+def stacked_gru(inputs, hidden, num_layers, seq_len, batch, keep_prob=1.0, is_train=None, std=0.1, concat_layers=True, scope="StackedGRU"):
     m_cell_fw = []
     m_cell_bw = []
     for i in range(num_layers):
@@ -22,6 +22,7 @@ def stacked_gru(inputs, hidden, num_layers, seq_len, batch, keep_prob=1.0, is_tr
     init_state_bw = m_cell_bw.zero_state(batch, dtype=tf.float32)
     output, state = tf.nn.bidirectional_dynamic_rnn(cell_fw=m_cell_fw, cell_bw=m_cell_bw, inputs=inputs,
                                                     sequence_length=seq_len, scope=scope, dtype=tf.float32)
+    output = tf.concat([output[0], output[1]], axis=2)
     return output, state
 
 
