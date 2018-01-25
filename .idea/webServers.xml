@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="c1eee7a5-7385-4e26-ab36-dabf4bd7e2d3" name="icstpie-zms-83" url="http://172.31.222.83">
+        <fileTransfer host="172.31.222.83" port="22" rootFolder="/home/zms" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+      <webServer id="a1e5344b-7cb5-4907-a5ea-d16a6b3dc12c" name="icstpie-zms-140" url="http://172.31.200.140">
+        <fileTransfer host="172.31.200.140" port="22" rootFolder="/home/zms" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
