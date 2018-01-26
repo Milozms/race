@@ -122,10 +122,11 @@ class Model(object):
         N, PL, QL, d = config.batch_size*4, self.article_maxlen, self.question_maxlen, config.hidden_size
         self.debug_output_name = []
         self.debug_output = []
-        with tf.variable_scope("emb"):
-            with tf.name_scope("word"):
-                c_emb = tf.nn.embedding_lookup(self.word_mat, self.article)
-                q_emb = tf.nn.embedding_lookup(self.word_mat, self.question)
+        with tf.device("/cpu:0"):
+            with tf.variable_scope("emb"):
+                with tf.name_scope("word"):
+                    c_emb = tf.nn.embedding_lookup(self.word_mat, self.article)
+                    q_emb = tf.nn.embedding_lookup(self.word_mat, self.question)
 
         with tf.variable_scope("encoding"):
             c, _ = stacked_gru(c_emb, d, batch=N, num_layers=2, seq_len=self.article_len, keep_prob=self.keep_prob,

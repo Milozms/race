@@ -206,9 +206,9 @@ def main(args):
 
 if __name__ == '__main__':
     # os.system('export LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64')
-    os.environ["CUDA_VISIBLE_DEVICES"] = ''  # 指定第一块GPU可用
+    os.environ["CUDA_VISIBLE_DEVICES"] = '1'  # 指定第一块GPU可用
     tfconfig = tf.ConfigProto()
-    # tfconfig.gpu_options.per_process_gpu_memory_fraction = 0.4
+    # tfconfig.gpu_options.per_process_gpu_memory_fraction = 0.6
     tfconfig.gpu_options.allow_growth = True  # 程序按需申请内存
     sess = tf.Session(config=tfconfig)
     args = config.get_args()
